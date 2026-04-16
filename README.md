@@ -36,6 +36,3 @@ ResolveHub is a modern, centralized platform designed for college campuses to ef
 4. **Access the application**:
    Open `http://localhost:3000` in your web browser. The backend server automatically serves the static frontend files.
 
-## Hackathon Goal
-
-ResolveHub was created to streamline campus infrastructure management and improve communication pipelines between students and administration through a fast, reliable, and aesthetically pleasing interface.
