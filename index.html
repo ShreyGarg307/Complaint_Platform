@@ -136,17 +136,19 @@
                     <option value="Administration">Administration</option>
                 </select>
             </div>
-            <div class="kanban-board">
-                <div class="kanban-column glassmorphism" data-status="Pending">
-                    <h3>Pending</h3>
+            <div class="dashboard-tabs glassmorphism">
+                <button class="tab-btn active" data-target="Pending">Pending</button>
+                <button class="tab-btn" data-target="In Progress">In Progress</button>
+                <button class="tab-btn" data-target="Resolved">Resolved</button>
+            </div>
+            <div class="kanban-board tabbed-view">
+                <div class="kanban-column glassmorphism active" data-status="Pending">
                     <div class="kanban-items" id="board-pending"></div>
                 </div>
                 <div class="kanban-column glassmorphism" data-status="In Progress">
-                    <h3>In Progress</h3>
                     <div class="kanban-items" id="board-in-progress"></div>
                 </div>
                 <div class="kanban-column glassmorphism" data-status="Resolved">
-                    <h3>Resolved</h3>
                     <div class="kanban-items" id="board-resolved"></div>
                 </div>
             </div>

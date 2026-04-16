@@ -327,7 +327,7 @@ h2 {
 /* Single-column when form is removed */
 .portal-list-only {
     grid-template-columns: 1fr;
-    max-width: 800px;
+    max-width: 100%;
 }
 
 @media (max-width: 768px) {

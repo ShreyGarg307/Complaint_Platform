@@ -10,6 +10,10 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Serve static frontend files
+const path = require('path');
+app.use(express.static(__dirname));
+
 // Database Setup
 const db = new sqlite3.Database('./database.sqlite', (err) => {
     if (err) {
@@ -28,6 +32,7 @@ const db = new sqlite3.Database('./database.sqlite', (err) => {
             // Departments Table
             db.run(`CREATE TABLE IF NOT EXISTS departments (
                 category TEXT PRIMARY KEY,
+                display_name TEXT,
                 dept_head_id TEXT
             )`);
 
@@ -45,12 +50,12 @@ const db = new sqlite3.Database('./database.sqlite', (err) => {
             )`);
 
             // Seed Departments
-            const stmt = db.prepare('INSERT OR IGNORE INTO departments (category, dept_head_id) VALUES (?, ?)');
-            stmt.run('IT', 'HEAD_IT');
-            stmt.run('Maintenance', 'HEAD_MAINT');
-            stmt.run('Cleaning', 'HEAD_CLEAN');
-            stmt.run('Academic', 'HEAD_ACAD');
-            stmt.run('Admin', 'HEAD_ADMIN');
+            const stmt = db.prepare('INSERT OR IGNORE INTO departments (category, display_name, dept_head_id) VALUES (?, ?, ?)');
+            stmt.run('IT', 'IT Support', 'HEAD_IT');
+            stmt.run('Maintenance', 'Facility Management', 'HEAD_MAINT');
+            stmt.run('Cleaning', 'Janitorial Services', 'HEAD_CLEAN');
+            stmt.run('Academic', 'Academic Affairs', 'HEAD_ACAD');
+            stmt.run('Admin', 'Administration', 'HEAD_ADMIN');
             stmt.finalize();
             
             // Seed a default student
@@ -84,22 +89,58 @@ app.get('/api/complaints', (req, res) => {
 
 // Create a new complaint
 app.post('/api/complaints', (req, res) => {
-    const { id, category, department, description, imageUrl, status, isEscalated, date } = req.body;
+    const { id, category, description, imageUrl, status, isEscalated, date } = req.body;
     
     // Default student_id for prototyping
     const student_id = 'student_1';
 
-    const sql = `INSERT INTO complaints (complaint_id, student_id, category, description, image_url, status, assigned_dept_id, is_escalated, date) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    const params = [id, student_id, category, description, imageUrl || null, status, department, isEscalated ? 1 : 0, date];
-
-    db.run(sql, params, function(err) {
-        if (err) {
-            res.status(400).json({ error: err.message });
-            return;
+    // Lookup department based on category
+    db.get('SELECT display_name FROM departments WHERE category = ?', [category], (err, row) => {
+        if (err || !row) {
+            return res.status(400).json({ error: "Invalid category" });
         }
-        res.json({ message: "Complaint created successfully", id: id });
+        
+        const department = row.display_name;
+
+        const sql = `INSERT INTO complaints (complaint_id, student_id, category, description, image_url, status, assigned_dept_id, is_escalated, date) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const params = [id, student_id, category, description, imageUrl || null, status, department, isEscalated ? 1 : 0, date];
+
+        db.run(sql, params, function(err) {
+            if (err) {
+                res.status(400).json({ error: err.message });
+                return;
+            }
+            res.json({ message: "Complaint created successfully", id: id, department: department });
+        });
     });
+});
+
+// Get analytics
+app.get('/api/analytics', (req, res) => {
+    db.all('SELECT status, is_escalated, assigned_dept_id FROM complaints', [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        
+        const total = rows.length;
+        const resolved = rows.filter(r => r.status === 'Resolved').length;
+        const escalated = rows.filter(r => r.is_escalated === 1).length;
+        
+        const deptCounts = {};
+        rows.forEach(r => {
+            if (r.assigned_dept_id) {
+                deptCounts[r.assigned_dept_id] = (deptCounts[r.assigned_dept_id] || 0) + 1;
+            }
+        });
+
+        res.json({ total, resolved, escalated, deptCounts });
+    });
+});
+
+// Get current mock user
+app.get('/api/me', (req, res) => {
+    res.json({ user_id: 'student_1', role: 'Student' });
 });
 
 // Update complaint status

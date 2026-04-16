@@ -1,17 +1,8 @@
 // Backend API configuration
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = '/api';
 
 // Data Store (Fetched from Backend)
 let complaints = [];
-
-// Department Routing Map
-const DEPT_MAP = {
-    'IT': 'IT Support',
-    'Maintenance': 'Facility Management',
-    'Cleaning': 'Janitorial Services',
-    'Academic': 'Academic Affairs',
-    'Admin': 'Administration'
-};
 
 // State
 let currentView = 'student'; // 'student' | 'department'
@@ -162,7 +153,6 @@ function setupFAB() {
         const newComplaint = {
             id:          'TKT-' + Math.floor(1000 + Math.random() * 9000),
             category,
-            department:  DEPT_MAP[category],
             description,
             status:      'Pending',
             isEscalated: false,
@@ -178,6 +168,8 @@ function setupFAB() {
                     body: JSON.stringify(newComplaint)
                 });
                 if (res.ok) {
+                    const resData = await res.json();
+                    newComplaint.department = resData.department;
                     complaints.unshift(newComplaint);
                     pushNotification(`✅ New complaint submitted: ${newComplaint.id}`);
                     closeFAB();
@@ -306,12 +298,14 @@ function renderStudentComplaints() {
     const list = document.getElementById('student-complaints-list');
     list.innerHTML = '';
 
-    if (complaints.length === 0) {
-        list.innerHTML = '<p style="color: var(--text-muted)">No complaints raised yet.</p>';
+    const activeComplaints = complaints.filter(c => c.status === 'Pending' || c.status === 'In Progress');
+
+    if (activeComplaints.length === 0) {
+        list.innerHTML = '<p style="color: var(--text-muted)">No active complaints at the moment.</p>';
         return;
     }
 
-    complaints.forEach(c => {
+    activeComplaints.forEach(c => {
         const card = createCardElement(c, false);
         list.appendChild(card);
     });
@@ -325,6 +319,25 @@ function setupDepartmentDashboard() {
     filter.addEventListener('change', (e) => {
         currentDeptFilter = e.target.value;
         renderKanban();
+    });
+
+    const tabs = document.querySelectorAll('.dashboard-tabs .tab-btn');
+    const columns = document.querySelectorAll('.kanban-board .kanban-column');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            const targetStatus = tab.dataset.target;
+            columns.forEach(col => {
+                if (col.dataset.status === targetStatus) {
+                    col.classList.add('active');
+                } else {
+                    col.classList.remove('active');
+                }
+            });
+        });
     });
 
     renderKanban();
@@ -443,37 +456,41 @@ function createCardElement(data, isDeptView) {
 }
 
 // Analytics Logic
-function setupAnalytics() {
-    document.getElementById('stat-total').textContent = complaints.length;
-    document.getElementById('stat-resolved').textContent = complaints.filter(c => c.status === 'Resolved').length;
-    document.getElementById('stat-escalated').textContent = complaints.filter(c => c.isEscalated).length;
+async function setupAnalytics() {
+    try {
+        const res = await fetch(`${API_BASE}/analytics`);
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('stat-total').textContent = data.total;
+            document.getElementById('stat-resolved').textContent = data.resolved;
+            document.getElementById('stat-escalated').textContent = data.escalated;
 
-    const barsContainer = document.getElementById('chart-bars');
-    barsContainer.innerHTML = '';
+            const barsContainer = document.getElementById('chart-bars');
+            barsContainer.innerHTML = '';
+            
+            // If there's no data yet, prevent Math.max from getting -Infinity
+            const counts = Object.values(data.deptCounts);
+            const maxVal = counts.length > 0 ? Math.max(...counts) : 1;
 
-    const deptCounts = {};
-    Object.values(DEPT_MAP).forEach(d => deptCounts[d] = 0);
-    complaints.forEach(c => {
-        if (deptCounts[c.department] !== undefined) deptCounts[c.department]++;
-    });
+            Object.entries(data.deptCounts).forEach(([dept, count]) => {
+                const pct = (count / maxVal) * 100;
+                const row = document.createElement('div');
+                row.className = 'bar-row';
+                row.innerHTML = `
+                    <div class="bar-label">${dept}</div>
+                    <div class="bar-track"><div class="bar-fill" style="width: 0%"></div></div>
+                    <div class="bar-value">${count}</div>
+                `;
+                barsContainer.appendChild(row);
 
-    const maxVal = Math.max(...Object.values(deptCounts), 1);
-
-    Object.entries(deptCounts).forEach(([dept, count]) => {
-        const pct = (count / maxVal) * 100;
-        const row = document.createElement('div');
-        row.className = 'bar-row';
-        row.innerHTML = `
-            <div class="bar-label">${dept}</div>
-            <div class="bar-track"><div class="bar-fill" style="width: 0%"></div></div>
-            <div class="bar-value">${count}</div>
-        `;
-        barsContainer.appendChild(row);
-
-        setTimeout(() => {
-            row.querySelector('.bar-fill').style.width = pct + '%';
-        }, 50);
-    });
+                setTimeout(() => {
+                    row.querySelector('.bar-fill').style.width = pct + '%';
+                }, 50);
+            });
+        }
+    } catch (e) {
+        console.error("Failed to load analytics: ", e);
+    }
 }
 
 // Public Feed Logic
