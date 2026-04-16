@@ -58,8 +58,9 @@ const db = new sqlite3.Database('./database.sqlite', (err) => {
             stmt.run('Admin', 'Administration', 'HEAD_ADMIN');
             stmt.finalize();
             
-            // Seed a default student
+            // Seed default users
             db.run(`INSERT OR IGNORE INTO users (user_id, role, department_id) VALUES ('student_1', 'Student', NULL)`);
+            db.run(`INSERT OR IGNORE INTO users (user_id, role, department_id) VALUES ('admin_1', 'Admin', 'Administration')`);
         });
     }
 });
@@ -89,10 +90,10 @@ app.get('/api/complaints', (req, res) => {
 
 // Create a new complaint
 app.post('/api/complaints', (req, res) => {
-    const { id, category, description, imageUrl, status, isEscalated, date } = req.body;
+    const { id, category, description, imageUrl, status, isEscalated, date, studentId } = req.body;
     
-    // Default student_id for prototyping
-    const student_id = 'student_1';
+    // Use requesting studentId or default for prototyping
+    const student_id = studentId || 'student_1';
 
     // Lookup department based on category
     db.get('SELECT display_name FROM departments WHERE category = ?', [category], (err, row) => {
@@ -138,9 +139,14 @@ app.get('/api/analytics', (req, res) => {
     });
 });
 
-// Get current mock user
-app.get('/api/me', (req, res) => {
-    res.json({ user_id: 'student_1', role: 'Student' });
+// Basic mock login
+app.post('/api/login', (req, res) => {
+    const { role } = req.body;
+    if (role === 'Admin') {
+        res.json({ user_id: 'admin_1', role: 'Admin' });
+    } else {
+        res.json({ user_id: 'student_1', role: 'Student' });
+    }
 });
 
 // Update complaint status

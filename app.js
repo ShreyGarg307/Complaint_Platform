@@ -9,6 +9,7 @@ let currentView = 'student'; // 'student' | 'department'
 let currentDeptFilter = 'All';
 let notifications = [];
 let notifCount = 0;
+let currentUser = null;
 
 async function fetchComplaints() {
     try {
@@ -41,13 +42,95 @@ const tplNotifications = document.getElementById('tpl-notifications');
 const tplCard = document.getElementById('tpl-complaint-card');
 
 // Initialization
-async function init() {
+function init() {
+    initAuth();
+}
+
+async function initApp() {
     setupNavigation();
     setupSidebarToggle();
     setupNotifications();
     setupFAB();
     await fetchComplaints();
     renderView();
+}
+
+function initAuth() {
+    const stored = localStorage.getItem('currentUser');
+    if (stored) {
+        currentUser = JSON.parse(stored);
+        showApp();
+    } else {
+        showLogin();
+    }
+}
+
+function showLogin() {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+
+    const loginRole = document.getElementById('login-role');
+    const loginUser = document.getElementById('login-username');
+    loginRole.addEventListener('change', () => {
+        loginUser.value = (loginRole.value === 'Admin') ? 'admin_1' : 'student_1';
+    });
+    
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const role = loginRole.value;
+        const btn = e.target.querySelector('button');
+        btn.textContent = 'Logging in...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(`${API_BASE}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role })
+            });
+            if (res.ok) {
+                currentUser = await res.json();
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                showApp();
+            }
+        } catch(err) {
+            console.error(err);
+        } finally {
+            btn.textContent = 'Log In';
+            btn.disabled = false;
+        }
+    });
+}
+
+function showApp() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    
+    const fabBtn = document.getElementById('fab-btn');
+
+    if (currentUser.role === 'Student') {
+        navDept.style.display = 'none';
+        currentView = 'student';
+    } else {
+        navStudent.style.display = 'none';
+        fabBtn.style.display = 'none';
+        currentView = 'department';
+    }
+
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    if (currentUser.role === 'Student') {
+        navStudent.classList.add('active');
+    } else {
+        navDept.classList.add('active');
+    }
+
+    document.getElementById('nav-logout').addEventListener('click', () => {
+        localStorage.removeItem('currentUser');
+        currentUser = null;
+        window.location.reload();
+    });
+
+    initApp();
 }
 
 function setupNavigation() {
@@ -138,18 +221,6 @@ function setupFAB() {
         const description = document.getElementById('fab-description').value;
         const imageFile   = document.getElementById('fab-image').files[0];
 
-        const isDuplicate = complaints.some(
-            c => c.category === category &&
-                 c.description.toLowerCase() === description.toLowerCase()
-        );
-        if (isDuplicate) {
-            pushNotification('⚠️ Duplicate detected! You recently submitted an identical issue.');
-            closeFAB();
-            btn.disabled = false;
-            btn.textContent = 'Submit Complaint';
-            return;
-        }
-
         const newComplaint = {
             id:          'TKT-' + Math.floor(1000 + Math.random() * 9000),
             category,
@@ -157,7 +228,8 @@ function setupFAB() {
             status:      'Pending',
             isEscalated: false,
             date:        new Date().toLocaleDateString(),
-            imageUrl:    null
+            imageUrl:    null,
+            studentId:   currentUser.user_id
         };
 
         async function finalize() {
@@ -248,11 +320,9 @@ function setupNotificationsPage() {
     notifCount = 0;
     notifBadge.classList.add('hidden');
 
-    // Mark all as read in data
-    notifications.forEach(n => n.read = true);
-
     const list = document.getElementById('notif-page-list');
     const markBtn = document.getElementById('mark-all-read');
+    const clearBtn = document.getElementById('clear-all-notifs');
 
     function renderNotifList() {
         list.innerHTML = '';
@@ -287,6 +357,13 @@ function setupNotificationsPage() {
         notifications.forEach(n => n.read = true);
         renderNotifList();
     });
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            notifications = [];
+            renderNotifList();
+        });
+    }
 }
 
 // Student Portal Logic

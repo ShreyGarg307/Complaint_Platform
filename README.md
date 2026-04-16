@@ -34,7 +34,7 @@ ResolveHub is a modern, centralized platform designed for college campuses to ef
    ```
 
 4. **Access the application**:
-   Open `index.html` in your web browser. (Note: once the backend static serving is complete, you will be able to access it directly via `http://localhost:3000`).
+   Open `http://localhost:3000` in your web browser. The backend server automatically serves the static frontend files.
 
 ## Hackathon Goal
 
