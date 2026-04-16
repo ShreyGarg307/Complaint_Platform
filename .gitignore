@@ -4,4 +4,4 @@ database.sqlite
 .env
 npm-debug.log*
 .DS_Store
-TECH_STACK
+TECH_STACK.md
