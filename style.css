@@ -1168,6 +1168,53 @@ option {
     gap: 0;
 }
 
+/* Dashboard Tabs */
+.dashboard-tabs {
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 12px;
+}
+.tab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.tab-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+}
+.tab-btn.active {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--primary);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.kanban-board.tabbed-view {
+    display: block;
+}
+.kanban-board.tabbed-view .kanban-column {
+    display: none;
+    min-height: auto;
+    padding: 0;
+}
+.kanban-board.tabbed-view .kanban-column.active {
+    display: block;
+    animation: fadeInDown 0.3s ease;
+}
+.kanban-board.tabbed-view .kanban-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
 @media (max-width: 540px) {
     .fab-overlay {
         padding: 0 1rem 6rem 1rem;
