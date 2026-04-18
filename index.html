@@ -195,21 +195,33 @@
             <div class="dashboard-header glassmorphism">
                 <h2>Platform Analytics</h2>
             </div>
+            <div class="dashboard-tabs glassmorphism" id="analytics-tabs" style="margin-top:1rem; flex-wrap: wrap; justify-content: flex-start; gap: 0.5rem; padding: 0.5rem;">
+                <button class="tab-btn active" data-target="All">All Departments</button>
+                <button class="tab-btn" data-target="IT Support">IT Support</button>
+                <button class="tab-btn" data-target="Facility Management">Facility Management</button>
+                <button class="tab-btn" data-target="Janitorial Services">Janitorial Services</button>
+                <button class="tab-btn" data-target="Academic Affairs">Academic Affairs</button>
+                <button class="tab-btn" data-target="Administration">Administration</button>
+            </div>
             <div class="stats-grid" style="margin-top:1.5rem">
-                <div class="stat-card glassmorphism">
+                <div class="stat-card glassmorphism stat-card-clickable" id="stat-card-total" data-filter="all" title="Click to view complaints">
                     <h3 id="stat-total">0</h3>
                     <p>Total Complaints</p>
+                    <span class="stat-card-hint">click to view</span>
                 </div>
-                <div class="stat-card glassmorphism">
+                <div class="stat-card glassmorphism stat-card-clickable" id="stat-card-resolved" data-filter="Resolved" title="Click to view complaints">
                     <h3 id="stat-resolved">0</h3>
                     <p>Resolved</p>
+                    <span class="stat-card-hint">click to view</span>
                 </div>
-                <div class="stat-card glassmorphism">
-                    <h3 id="stat-escalated">0</h3>
-                    <p>Escalated</p>
+                <div class="stat-card glassmorphism stat-card-clickable" id="stat-card-pending" data-filter="Pending" title="Click to view complaints">
+                    <h3 id="stat-pending">0</h3>
+                    <p>Pending</p>
+                    <span class="stat-card-hint">click to view</span>
                 </div>
             </div>
-            <div class="charts-section glassmorphism" style="margin-top:1.5rem; padding:2rem">
+            <div id="analytics-complaint-list" class="analytics-complaint-list" style="display:none;"></div>
+            <div class="charts-section glassmorphism" style="margin-top:1.5rem; padding:2rem" id="analytics-chart-container">
                 <h3>Department Workload</h3>
                 <div id="chart-bars" class="chart-bars"></div>
             </div>

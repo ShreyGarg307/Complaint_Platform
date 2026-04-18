@@ -837,6 +837,110 @@ option {
     font-size: 1rem;
 }
 
+/* Clickable stat cards */
+.stat-card-clickable {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    position: relative;
+    user-select: none;
+}
+
+.stat-card-clickable:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 28px rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+.stat-card-clickable.stat-card-active {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35), 0 8px 28px rgba(59, 130, 246, 0.25);
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.stat-card-clickable.stat-card-active h3 {
+    background: linear-gradient(to right, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.stat-card-hint {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 0.4rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.stat-card-clickable:hover .stat-card-hint {
+    opacity: 1;
+}
+
+/* Analytics complaint list panel */
+.analytics-complaint-list {
+    margin-top: 1.5rem;
+    animation: fadeInDown 0.3s ease;
+}
+
+.analytics-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+}
+
+.analytics-list-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0;
+}
+
+.analytics-list-count {
+    font-size: 0.8rem;
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--primary);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    padding: 0.15rem 0.6rem;
+    border-radius: 9999px;
+    font-weight: 600;
+}
+
+.analytics-list-close {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, color 0.2s;
+    flex-shrink: 0;
+}
+
+.analytics-list-close:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.analytics-list-empty {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    padding: 1.5rem 0;
+    text-align: center;
+}
+
 .chart-bars {
     display: flex;
     flex-direction: column;

@@ -7,6 +7,7 @@ let complaints = [];
 // State
 let currentView = 'student'; // 'student' | 'department'
 let currentDeptFilter = 'All';
+let currentAnalyticsTab = 'All';
 let notifications = [];
 let notifCount = 0;
 let currentUser = null;
@@ -248,7 +249,7 @@ function setupFAB() {
                     if (currentView === 'student') renderStudentComplaints();
                     if (currentView === 'department') renderKanban();
                     if (currentView === 'feed') setupPublicFeed();
-                    if (currentView === 'analytics') setupAnalytics();
+                    if (currentView === 'analytics') renderAnalytics();
                 } else {
                     pushNotification('❌ Failed to save complaint to server.');
                 }
@@ -533,40 +534,174 @@ function createCardElement(data, isDeptView) {
 }
 
 // Analytics Logic
-async function setupAnalytics() {
-    try {
-        const res = await fetch(`${API_BASE}/analytics`);
-        if (res.ok) {
-            const data = await res.json();
-            document.getElementById('stat-total').textContent = data.total;
-            document.getElementById('stat-resolved').textContent = data.resolved;
-            document.getElementById('stat-escalated').textContent = data.escalated;
+function setupAnalytics() {
+    const tabs = document.querySelectorAll('#analytics-tabs .tab-btn');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            currentAnalyticsTab = tab.dataset.target;
+            analyticsOpenPanel = null; // close any open complaint list when switching dept tab
+            renderAnalytics();
+        });
+    });
 
-            const barsContainer = document.getElementById('chart-bars');
-            barsContainer.innerHTML = '';
-            
-            // If there's no data yet, prevent Math.max from getting -Infinity
-            const counts = Object.values(data.deptCounts);
-            const maxVal = counts.length > 0 ? Math.max(...counts) : 1;
+    // Ensure the state matches the active tab visually on load
+    currentAnalyticsTab = 'All';
+    analyticsOpenPanel = null;
+    renderAnalytics();
+}
 
-            Object.entries(data.deptCounts).forEach(([dept, count]) => {
-                const pct = (count / maxVal) * 100;
-                const row = document.createElement('div');
-                row.className = 'bar-row';
-                row.innerHTML = `
-                    <div class="bar-label">${dept}</div>
-                    <div class="bar-track"><div class="bar-fill" style="width: 0%"></div></div>
-                    <div class="bar-value">${count}</div>
-                `;
-                barsContainer.appendChild(row);
+// Track which stat panel is open ('all' | 'Resolved' | 'Pending' | null)
+let analyticsOpenPanel = null;
 
-                setTimeout(() => {
-                    row.querySelector('.bar-fill').style.width = pct + '%';
-                }, 50);
-            });
+function renderAnalytics() {
+    const chartContainer = document.getElementById('analytics-chart-container');
+    if (!chartContainer) return;
+
+    const filtered = currentAnalyticsTab === 'All' 
+        ? complaints 
+        : complaints.filter(c => c.department === currentAnalyticsTab);
+    
+    const total = filtered.length;
+    const resolved = filtered.filter(c => c.status === 'Resolved').length;
+    const pending = filtered.filter(c => c.status === 'Pending').length;
+    
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-resolved').textContent = resolved;
+    document.getElementById('stat-pending').textContent = pending;
+
+    // Wire up stat card clicks (once per render — remove old listeners by replacing nodes)
+    ['stat-card-total', 'stat-card-resolved', 'stat-card-pending'].forEach(cardId => {
+        const card = document.getElementById(cardId);
+        if (!card) return;
+        // Clone to drop any old listeners
+        const fresh = card.cloneNode(true);
+        card.parentNode.replaceChild(fresh, card);
+        fresh.addEventListener('click', () => {
+            const filter = fresh.dataset.filter; // 'all' | 'Resolved' | 'Pending'
+            if (analyticsOpenPanel === filter) {
+                // Toggle off
+                analyticsOpenPanel = null;
+                document.querySelectorAll('.stat-card-clickable').forEach(c => c.classList.remove('stat-card-active'));
+                closeAnalyticsComplaintList();
+            } else {
+                analyticsOpenPanel = filter;
+                document.querySelectorAll('.stat-card-clickable').forEach(c => c.classList.remove('stat-card-active'));
+                fresh.classList.add('stat-card-active');
+                const pool = filtered.filter(c => filter === 'all' || c.status === filter);
+                showAnalyticsComplaintList(pool, filter === 'all' ? 'All Complaints' : filter + ' Complaints');
+            }
+        });
+    });
+
+    // Re-apply active state if a panel was open before a tab switch
+    if (analyticsOpenPanel) {
+        const activeCard = document.querySelector(`[data-filter="${analyticsOpenPanel}"]`);
+        if (activeCard) {
+            activeCard.classList.add('stat-card-active');
+            const pool = filtered.filter(c => analyticsOpenPanel === 'all' || c.status === analyticsOpenPanel);
+            showAnalyticsComplaintList(pool, analyticsOpenPanel === 'all' ? 'All Complaints' : analyticsOpenPanel + ' Complaints');
         }
-    } catch (e) {
-        console.error("Failed to load analytics: ", e);
+    } else {
+        closeAnalyticsComplaintList();
+    }
+
+    if (currentAnalyticsTab === 'All') {
+        chartContainer.style.display = 'block';
+        
+        const deptCounts = {};
+        filtered.forEach(r => {
+            if (r.department) {
+                deptCounts[r.department] = (deptCounts[r.department] || 0) + 1;
+            }
+        });
+        
+        const barsContainer = document.getElementById('chart-bars');
+        barsContainer.innerHTML = '';
+        
+        const counts = Object.values(deptCounts);
+        const maxVal = counts.length > 0 ? Math.max(...counts) : 1;
+
+        Object.entries(deptCounts).forEach(([dept, count]) => {
+            const pct = (count / maxVal) * 100;
+            const row = document.createElement('div');
+            row.className = 'bar-row';
+            row.innerHTML = `
+                <div class="bar-label">${dept}</div>
+                <div class="bar-track"><div class="bar-fill" style="width: 0%"></div></div>
+                <div class="bar-value">${count}</div>
+            `;
+            barsContainer.appendChild(row);
+
+            setTimeout(() => {
+                row.querySelector('.bar-fill').style.width = pct + '%';
+            }, 50);
+        });
+    } else {
+        chartContainer.style.display = 'none';
+    }
+}
+
+function showAnalyticsComplaintList(pool, title) {
+    const container = document.getElementById('analytics-complaint-list');
+    if (!container) return;
+    container.style.display = 'block';
+    container.innerHTML = '';
+
+    // Header row
+    const header = document.createElement('div');
+    header.className = 'analytics-list-header';
+    header.innerHTML = `
+        <h3>${title} <span class="analytics-list-count">${pool.length}</span></h3>
+        <button class="analytics-list-close" title="Close" id="analytics-list-close-btn">✕</button>
+    `;
+    container.appendChild(header);
+
+    document.getElementById('analytics-list-close-btn').addEventListener('click', () => {
+        analyticsOpenPanel = null;
+        document.querySelectorAll('.stat-card-clickable').forEach(c => c.classList.remove('stat-card-active'));
+        closeAnalyticsComplaintList();
+    });
+
+    if (pool.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'analytics-list-empty';
+        empty.textContent = 'No complaints in this category.';
+        container.appendChild(empty);
+        return;
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'complaints-list';
+    pool.forEach(c => {
+        const clone = tplCard.content.cloneNode(true);
+        const card = clone.querySelector('.complaint-card');
+        if (c.isEscalated) {
+            card.classList.add('is-escalated');
+            clone.querySelector('.escalated-badge').style.display = 'inline-block';
+        }
+        clone.querySelector('.category-badge').textContent = c.category;
+        const sb = clone.querySelector('.status-badge');
+        sb.textContent = c.status;
+        sb.classList.add(c.status.toLowerCase().replace(' ', '-'));
+        clone.querySelector('.description').textContent = c.description;
+        clone.querySelector('.ticket-id').textContent = c.id + ' • ' + (c.department || '—');
+        clone.querySelector('.date').textContent = c.date;
+        grid.appendChild(card);
+    });
+    container.appendChild(grid);
+
+    // Smooth scroll to list
+    setTimeout(() => container.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
+function closeAnalyticsComplaintList() {
+    const container = document.getElementById('analytics-complaint-list');
+    if (container) {
+        container.style.display = 'none';
+        container.innerHTML = '';
     }
 }
 
